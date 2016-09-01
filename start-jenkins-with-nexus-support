@@ -1,0 +1,131 @@
+#!/bin/bash
+
+/usr/bin/git config --global user.email "$SCM_USER_EMAIL"
+/usr/bin/git config --global user.name "$SCM_USER_NAME"
+
+mkdir -p "$SSL_CERTIFICATES_HOME"
+
+function validate_param(){
+  local PARAMETER_NAME
+  PARAMETER_NAME="$1"
+  if [ -z "`echo ${!PARAMETER_NAME}`" ]; then
+      echo >&2 "Error: Mandatory ${PARAMETER_NAME} enviroment variable is empty!!!"
+      EXIT_FLAG="true"
+  fi
+}
+
+validate_param "NEXUS_NAME"
+validate_param "NEXUS_SSL_HOST"
+validate_param "NEXUS_SSL_PORT"
+validate_param "NEXUS_USER"
+validate_param "NEXUS_PASS"
+validate_param "SCM_HOST"
+validate_param "SCM_USER_EMAIL"
+validate_param "SCM_PASS"
+validate_param "SCM_USER_ID"
+validate_param "SCM_USER_NAME"
+
+
+if [ ! -f "$SSL_CERTIFICATES_HOME/imported/${NEXUS_SSL_HOST}.crt.gz" ]; then
+  echo "Extracting SSL certificate from ${NEXUS_SSL_HOST}:${NEXUS_SSL_PORT} to ${SSL_CERTIFICATES_HOME}/${NEXUS_SSL_HOST}.crt ..."
+  /usr/bin/openssl s_client -connect ${NEXUS_SSL_HOST}:${NEXUS_SSL_PORT}  2>&1 < "/" | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > "${SSL_CERTIFICATES_HOME}/${NEXUS_SSL_HOST}.crt" \
+  || (printf "\n=== Error extracting certificate of ${NEXUS_SSL_HOST}:${NEXUS_SSL_PORT}\n" \
+  && EXIT_FLAG="true")
+fi
+
+if [ ! -z "$EXIT_FLAG" ]; then
+  exit 1
+fi
+
+cat <<EOF > "$JENKINS_HOME/.netrc"
+machine $SCM_HOST
+login $SCM_USER_ID
+password $SCM_PASS
+EOF
+
+export JENKINS_DOT_M2="$JENKINS_HOME/.m2"
+
+if [ ! -d "$JENKINS_DOT_M2" ]; then
+mkdir -p "$JENKINS_DOT_M2"
+cat <<EOF> "$JENKINS_DOT_M2/settings.xml"
+<settings>
+  <localRepository>${MAVEN_REPO}</localRepository>
+  <servers>
+
+    <!-- these are Nexus credentials -->
+    <server>
+      <id>${NEXUS_NAME}-releases</id>
+      <username>${NEXUS_USER}</username>
+      <password>${NEXUS_PASS}</password>
+    </server>
+    <server>
+      <id>${NEXUS_NAME}-snapshots</id>
+      <username>${NEXUS_USER}</username>
+      <password>${NEXUS_PASS}</password>
+    </server>
+  </servers>
+
+  <mirrors>
+    <mirror>
+      <id>${NEXUS_NAME}-releases</id>
+      <url>https://${NEXUS_SSL_HOST}/repository/maven-public/</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+
+    <mirror>
+      <id>${NEXUS_NAME}-releases</id>
+      <url>https://${NEXUS_SSL_HOST}/repository/maven-public/</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+
+  </mirrors>
+
+  <profiles>
+
+    <profile>
+      <id>${NEXUS_NAME}</id>
+      <repositories>
+        <repository>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+          <id>${NEXUS_NAME}-releases</id>
+          <name>${NEXUS_NAME}-releases</name>
+          <url>https://${NEXUS_SSL_HOST}/repository/maven-releases</url>
+        </repository>
+        <repository>
+          <snapshots />
+          <id>${NEXUS_NAME}-snapshots</id>
+          <name>${NEXUS_NAME}-snapshots</name>
+          <url>https://${NEXUS_SSL_HOST}/repository/maven-snapshots</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+          <id>${NEXUS_NAME}-releases</id>
+          <name>plugin-releases</name>
+          <url>https://${NEXUS_SSL_HOST}/repository/maven-releases</url>
+        </pluginRepository>
+        <pluginRepository>
+          <snapshots />
+          <id>${NEXUS_NAME}-snapshots</id>
+          <name>plugins-snapshots</name>
+          <url>https://${NEXUS_SSL_HOST}/repository/maven-snapshots</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>${NEXUS_NAME}</activeProfile>
+  </activeProfiles>
+
+</settings>
+EOF
+fi
+
+. /start-jenkins
