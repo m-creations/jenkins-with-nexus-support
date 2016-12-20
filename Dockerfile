@@ -24,4 +24,4 @@ ENV SCM_USER_NAME "Jenkins CI Administrator"
 
 COPY start-jenkins-with-nexus-support /
 
-ENTRYPOINT ["/bin/tini","--","/start-jenkins-with-nexus-support"]
+CMD ["/start-jenkins-with-nexus-support"]

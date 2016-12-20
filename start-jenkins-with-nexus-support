@@ -128,4 +128,4 @@ cat <<EOF> "$JENKINS_DOT_M2/settings.xml"
 EOF
 fi
 
-. /start-jenkins
+. /jenkins-chown-and-start
