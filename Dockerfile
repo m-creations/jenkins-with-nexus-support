@@ -22,6 +22,9 @@ ENV NEXUS_USER jenkins
 ENV SCM_USER_ID jenkins
 ENV SCM_USER_NAME "Jenkins CI Administrator"
 
+RUN opkg update && \
+    opkg install libstdcpp
+
 COPY start-jenkins-with-nexus-support /
 
 CMD ["/start-jenkins-with-nexus-support"]

@@ -128,4 +128,10 @@ cat <<EOF> "$JENKINS_DOT_M2/settings.xml"
 EOF
 fi
 
+# This is a temporary solution to allow NVM builds: we will switch to docker workers soon
+if [ -d /usr/local/node/nvm ] ; then
+  export NVM_DIR=/usr/local/node/nvm
+  source $NVM_DIR/nvm.sh
+fi
+
 . /jenkins-chown-and-start
