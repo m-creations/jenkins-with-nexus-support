@@ -1,6 +1,6 @@
 ## -*- docker-image-name: "mcreations/jenkins-with-nexus-support" -*-
 
-FROM mcreations/jenkins:2.32.3
+FROM mcreations/jenkins:2.46.1
 
 MAINTAINER Kambiz Darabi <darabi@m-creations.net>
 MAINTAINER Reza Rahimi <rahimi@m-creations.net>
